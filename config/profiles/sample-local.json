@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "sample-local",
+  "displayName": "Sample Local Seed",
+  "description": "Materialize the tracked sample fixture into a local Git repository under .local/targets/sample-local.",
+  "target": {
+    "kind": "fixture",
+    "seedRoot": "fixtures/sample-seed",
+    "repositoryPath": ".local/targets/sample-local"
+  },
+  "workspace": {
+    "path": ".local/workspaces/sample-local"
+  },
+  "materializer": {
+    "script": "scripts/materialize-sample-target.ps1"
+  },
+  "verification": {
+    "workingDirectory": ".local/targets/sample-local",
+    "command": "python",
+    "args": [
+      "-m",
+      "pytest"
+    ],
+    "timeoutSeconds": 60
+  },
+  "environment": {
+    "required": [],
+    "optional": [
+      "OPENAI_API_KEY",
+      "GITHUB_TOKEN"
+    ]
+  }
+}

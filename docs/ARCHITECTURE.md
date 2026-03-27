@@ -11,14 +11,17 @@ flows share the same paths, runtime defaults, and prerequisite checks.
 Tracked repository content:
 
 - `config/`: checked-in configuration templates and schema examples.
+- `config/profiles/`: tracked declarative experiment profiles for CLI and
+  desktop launchers.
 - `docs/`: architecture notes and operator-facing documentation.
 - `fixtures/`: tracked seed inputs for repeatable experiments.
-- `profiles/`: tracked profile definitions referenced by runtime scripts.
 - `scripts/`: entry scripts and shared PowerShell helpers.
 
 Generated local state:
 
 - `.local/upstream/`: cloned or refreshed upstream repositories.
+- `.local/targets/`: local target repositories materialized from tracked
+  fixtures or remote sources.
 - `.local/workspaces/`: mutable workspaces for managed runs and desktop flows.
 - `.local/logs/`: command logs and diagnostic output.
 - `.local/venv/`: repo-local Python environment used by harness scripts.

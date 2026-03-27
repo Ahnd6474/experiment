@@ -84,12 +84,18 @@ function Test-ExperimentPrerequisite {
     )
 
     $commandInfo = Get-Command -Name $Definition.command -ErrorAction SilentlyContinue
+    $minimumVersion = if ($Definition.PSObject.Properties.Name.Contains("minimumVersion")) {
+        $Definition.minimumVersion
+    }
+    else {
+        $null
+    }
 
     return [pscustomobject]@{
         Name = $Name
         Command = $Definition.command
         Required = [bool]$Definition.required
-        MinimumVersion = $Definition.minimumVersion
+        MinimumVersion = $minimumVersion
         IsAvailable = $null -ne $commandInfo
         CommandPath = if ($null -ne $commandInfo) { $commandInfo.Source } else { $null }
     }

@@ -5,13 +5,13 @@
     "upstreamCheckout": ".local/upstream/jakal-flow",
     "workspaceRoot": ".local/workspaces",
     "logsRoot": ".local/logs",
-    "profilesRoot": "profiles",
+    "profilesRoot": "config/profiles",
     "fixturesRoot": "fixtures"
   },
   "runtime": {
     "pythonCommand": "python",
     "venvPath": ".local/venv",
-    "defaultProfile": "default",
+    "defaultProfile": "sample-local",
     "shell": "powershell",
     "logLevel": "INFO"
   },
