@@ -10,6 +10,10 @@ function Get-ExperimentConfigPath {
         [string]$ConfigPath = "config/experiment.example.json"
     )
 
+    if ([System.IO.Path]::IsPathRooted($ConfigPath)) {
+        return $ConfigPath
+    }
+
     $repoRoot = Get-ExperimentRepoRoot
     return (Join-Path $repoRoot $ConfigPath)
 }
