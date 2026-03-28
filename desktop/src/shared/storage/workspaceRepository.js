@@ -2,6 +2,9 @@ import {
   WORKSPACE_STORAGE_KEY,
   WORKSPACE_STORAGE_VERSION,
   createSeedWorkspaceSnapshot,
+  createWorkspaceProject,
+  normalizeWorkspaceSnapshotV2,
+  WorkspaceRouteKeys,
 } from "../contracts/index.js";
 
 function createMemoryStorage() {
@@ -36,6 +39,13 @@ function sortMigrations(migrations) {
   return [...migrations].sort((left, right) => left.version - right.version);
 }
 
+const defaultWorkspaceMigrations = Object.freeze([
+  Object.freeze({
+    version: WORKSPACE_STORAGE_VERSION,
+    up: normalizeWorkspaceSnapshotV2,
+  }),
+]);
+
 /**
  * WorkspaceRepository is the only shared UI write boundary for the desktop shell.
  */
@@ -49,7 +59,10 @@ export class WorkspaceRepository {
     this.storage = resolveStorage(storage);
     this.storageKey = storageKey;
     this.schemaVersion = schemaVersion;
-    this.migrations = sortMigrations(migrations);
+    this.migrations = sortMigrations([
+      ...defaultWorkspaceMigrations,
+      ...migrations,
+    ]);
     this.listeners = new Set();
     this.snapshot = this.#loadSnapshot();
   }
@@ -64,10 +77,11 @@ export class WorkspaceRepository {
   }
 
   replaceSnapshot(snapshot) {
+    const normalizedSnapshot = normalizeWorkspaceSnapshotV2(snapshot);
     const nextSnapshot = {
-      ...snapshot,
+      ...normalizedSnapshot,
       meta: {
-        ...snapshot.meta,
+        ...normalizedSnapshot.meta,
         schemaVersion: this.schemaVersion,
         updatedAt: new Date().toISOString(),
       },
@@ -83,6 +97,29 @@ export class WorkspaceRepository {
   reset() {
     const seededSnapshot = createSeedWorkspaceSnapshot();
     return this.replaceSnapshot(seededSnapshot);
+  }
+
+  updateNavigation(routeKey) {
+    const nextRoute = WorkspaceRouteKeys.includes(routeKey)
+      ? routeKey
+      : WorkspaceRouteKeys[0];
+
+    return this.writeSnapshot((currentSnapshot) => ({
+      ...currentSnapshot,
+      navigation: {
+        ...currentSnapshot.navigation,
+        lastRoute: nextRoute,
+      },
+    }));
+  }
+
+  createProject(projectInput = {}) {
+    const nextProject = createWorkspaceProject(projectInput);
+
+    return this.writeSnapshot((currentSnapshot) => ({
+      ...currentSnapshot,
+      projects: [...currentSnapshot.projects, nextProject],
+    }));
   }
 
   subscribe(listener) {

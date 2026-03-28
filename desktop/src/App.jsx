@@ -4,33 +4,17 @@ import {
   DEFAULT_APP_ROUTE,
   routeFromHash,
 } from "./app/routes/index.js";
+import ProjectsRoute from "./features/projects/ProjectsRoute.jsx";
+import TasksRoute from "./features/tasks/TasksRoute.jsx";
+import IdeasRoute from "./features/ideas/IdeasRoute.jsx";
+import FilesRoute from "./features/files/FilesRoute.jsx";
 
-const surfaceContent = {
-  projects: {
-    eyebrow: "Projects",
-    title: "Repository and delivery hub",
-    description:
-      "GitHub-like project work lands here first. Feature slices can add richer boards and commit views without changing the shell contract.",
-  },
-  tasks: {
-    eyebrow: "Tasks",
-    title: "Execution board",
-    description:
-      "Task views can evolve independently while still reading the same workspace snapshot and writing through the repository adapter.",
-  },
-  ideas: {
-    eyebrow: "Ideas",
-    title: "Incubation space",
-    description:
-      "Idea capture, review, and promotion stay feature-local, but the shell freezes the route and shared references up front.",
-  },
-  files: {
-    eyebrow: "Files",
-    title: "Local file organizer",
-    description:
-      "Drive-like file management can expand later while keeping file entities and cross-links in the shared workspace snapshot.",
-  },
-};
+const routeEntries = Object.freeze({
+  projects: ProjectsRoute,
+  tasks: TasksRoute,
+  ideas: IdeasRoute,
+  files: FilesRoute,
+});
 
 const shellStyles = {
   app: {
@@ -108,30 +92,11 @@ const shellStyles = {
     gap: "20px",
     gridTemplateColumns: "minmax(0, 2fr) minmax(280px, 1fr)",
   },
-  heroCard: {
-    padding: "24px",
-    borderRadius: "20px",
-    backgroundColor: "#ffffff",
-    border: "1px solid rgba(93, 107, 121, 0.14)",
-    boxShadow: "0 12px 24px rgba(16, 32, 51, 0.06)",
-  },
   statsCard: {
     padding: "24px",
     borderRadius: "20px",
     backgroundColor: "#f4f6f8",
     border: "1px solid rgba(93, 107, 121, 0.14)",
-  },
-  list: {
-    display: "grid",
-    gap: "12px",
-    padding: 0,
-    margin: 0,
-    listStyle: "none",
-  },
-  item: {
-    padding: "14px 16px",
-    borderRadius: "16px",
-    backgroundColor: "#eef2f4",
   },
   statNumber: {
     margin: "6px 0 0",
@@ -158,10 +123,10 @@ function readCurrentRoute() {
 
 function routeCollection(snapshot) {
   return {
-    projects: snapshot.projects,
-    tasks: snapshot.tasks,
-    ideas: snapshot.ideas,
-    files: snapshot.files,
+    projects: snapshot.projects ?? [],
+    tasks: snapshot.tasks ?? [],
+    ideas: snapshot.ideas ?? [],
+    files: snapshot.files ?? [],
   };
 }
 
@@ -169,8 +134,8 @@ export default function App({ repository }) {
   const snapshot = useWorkspaceSnapshot(repository);
   const [activeRoute, setActiveRoute] = useState(readCurrentRoute);
   const collections = routeCollection(snapshot);
-  const activeSurface = surfaceContent[activeRoute];
-  const activeRecords = collections[activeRoute] ?? [];
+  const ActiveRouteEntry = routeEntries[activeRoute] ?? routeEntries[DEFAULT_APP_ROUTE];
+  const activeCount = collections[activeRoute]?.length ?? 0;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -190,13 +155,7 @@ export default function App({ repository }) {
   }, []);
 
   useEffect(() => {
-    repository.writeSnapshot((currentSnapshot) => ({
-      ...currentSnapshot,
-      navigation: {
-        ...currentSnapshot.navigation,
-        lastRoute: activeRoute,
-      },
-    }));
+    repository.updateNavigation(activeRoute);
   }, [activeRoute, repository]);
 
   return (
@@ -236,28 +195,16 @@ export default function App({ repository }) {
         </nav>
 
         <section style={shellStyles.panel}>
-          <article style={shellStyles.heroCard}>
-            <p style={shellStyles.eyebrow}>{activeSurface.eyebrow}</p>
-            <h2 style={{ marginTop: 0 }}>{activeSurface.title}</h2>
-            <p>{activeSurface.description}</p>
-            <ul style={shellStyles.list}>
-              {activeRecords.map((record) => (
-                <li key={record.id} style={shellStyles.item}>
-                  <strong>{record.title}</strong>
-                  <div>{record.summary}</div>
-                </li>
-              ))}
-            </ul>
-          </article>
+          <ActiveRouteEntry repository={repository} snapshot={snapshot} />
 
           <aside style={shellStyles.statsCard}>
             <p style={shellStyles.eyebrow}>Repository boundary</p>
             <h2 style={{ marginTop: 0 }}>WorkspaceRepository</h2>
             <p>
-              UI routes read the same snapshot and write through the same
-              repository instance.
+              AppShell owns shell chrome and route selection. Feature routes read
+              the same snapshot and keep shared writes inside the repository.
             </p>
-            <p style={shellStyles.statNumber}>{activeRecords.length}</p>
+            <p style={shellStyles.statNumber}>{activeCount}</p>
             <p style={{ marginTop: 0 }}>
               Seed records on the active route. Current shell key:{" "}
               <strong>{activeRoute}</strong>

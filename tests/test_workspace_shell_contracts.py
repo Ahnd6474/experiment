@@ -50,57 +50,80 @@ def test_routes_contract_exposes_the_four_stable_shell_surfaces():
     )
 
 
-def test_snapshot_contract_freezes_cross_link_refs_and_seed_data():
+def test_snapshot_contract_freezes_v2_entities_boards_and_hierarchy():
     contracts_source = read_text("desktop/src/shared/contracts/index.js")
 
     assert_contains(
         contracts_source,
-        "export const CrossLinkRefs",
-        "export const WorkspaceSnapshot",
-        "createSeedWorkspaceSnapshot",
-        '"project-shell"',
-        '"task-shell"',
-        '"idea-shell"',
-        '"file-shell"',
+        "WORKSPACE_STORAGE_VERSION = 2",
+        "export const WorkspaceProject",
+        "export const WorkspaceTask",
+        "export const WorkspaceIdea",
+        "export const WorkspaceFile",
+        "boards:",
+        "fileHierarchy:",
+        "rootFileIds",
+        "createWorkspaceProject",
+        "normalizeWorkspaceSnapshotV2",
+        '"file-shell-root"',
+        '"file-shell-guide"',
     )
 
 
-def test_repository_adapter_is_seed_backed_and_migration_ready():
+def test_repository_adapter_normalizes_v2_writes_and_shared_helpers():
     storage_source = read_text("desktop/src/shared/storage/workspaceRepository.js")
 
     assert_contains(
         storage_source,
         "export class WorkspaceRepository",
-        "migrations = []",
-        "readSnapshot()",
-        "writeSnapshot(updater)",
+        "defaultWorkspaceMigrations",
+        "normalizeWorkspaceSnapshotV2",
+        "updateNavigation(routeKey)",
+        "createProject(projectInput = {})",
         "replaceSnapshot(snapshot)",
-        "#migrateSnapshot",
-        "createSeedWorkspaceSnapshot",
     )
 
 
-def test_app_shell_mounts_routes_against_a_single_repository_boundary():
+def test_app_shell_only_selects_route_entries_and_repository_boundary():
     app_source = read_text("desktop/src/App.jsx")
     main_source = read_text("desktop/src/main.jsx")
 
-    assert_contains(main_source, "<App repository={workspaceRepository} />")
+    assert_contains(
+        main_source,
+        "<App repository={workspaceRepository} />",
+    )
     assert_contains(
         app_source,
-        "AppShellRoutes.map",
-        "WorkspaceRepository",
-        'href={route.path}',
-        "repository.writeSnapshot",
+        'import ProjectsRoute from "./features/projects/ProjectsRoute.jsx";',
+        'import TasksRoute from "./features/tasks/TasksRoute.jsx";',
+        'import IdeasRoute from "./features/ideas/IdeasRoute.jsx";',
+        'import FilesRoute from "./features/files/FilesRoute.jsx";',
+        "const routeEntries = Object.freeze({",
+        "repository.updateNavigation(activeRoute)",
+        "<ActiveRouteEntry repository={repository} snapshot={snapshot} />",
     )
+    assert "activeRecords.map" not in app_source
+    assert "repository.writeSnapshot" not in app_source
 
 
-def test_tauri_entrypoint_exists_for_the_desktop_shell():
-    tauri_source = read_text("src-tauri/src/main.rs")
+def test_surface_route_entry_modules_exist_with_frozen_contract_docstring():
+    for relative_path in (
+        "desktop/src/features/projects/ProjectsRoute.jsx",
+        "desktop/src/features/tasks/TasksRoute.jsx",
+        "desktop/src/features/ideas/IdeasRoute.jsx",
+        "desktop/src/features/files/FilesRoute.jsx",
+    ):
+        source = read_text(relative_path)
 
-    assert_contains(tauri_source, "tauri::Builder::default()", "generate_context!")
+        assert_contains(
+            source,
+            "AppShell owns only route selection, shell chrome, and shared repository wiring.",
+            "Shared data lives in WorkspaceSnapshot v2",
+            "export default function",
+        )
 
 
-def test_repository_runtime_persists_and_updates_snapshot_shape():
+def test_repository_runtime_persists_v2_snapshot_and_project_defaults():
     result = run_node(
         """
         import { createWorkspaceRepository } from "./desktop/src/shared/storage/workspaceRepository.js";
@@ -114,36 +137,142 @@ def test_repository_runtime_persists_and_updates_snapshot_shape():
 
         const repository = createWorkspaceRepository({ storage });
         const seeded = repository.readSnapshot();
-        const updated = repository.writeSnapshot((current) => ({
-          ...current,
-          projects: [
-            ...current.projects,
-            {
-              id: "project-2",
-              title: "Second project",
-              summary: "Added during runtime verification.",
-              links: { taskIds: [], ideaIds: [], fileIds: [] },
-            },
-          ],
-        }));
+        const created = repository.createProject({
+          title: "Second project",
+          summary: "Added during runtime verification.",
+        });
+        const updated = repository.updateNavigation("files");
+        const createdProject = created.projects.at(-1);
 
         console.log(JSON.stringify({
-          seededRoute: seeded.navigation.lastRoute,
-          seededProjects: seeded.projects.length,
-          updatedProjects: updated.projects.length,
-          storedProjects: JSON.parse(storage.getItem("jakal.workspace.snapshot")).projects.length,
-          schemaVersion: updated.meta.schemaVersion,
+          seededSchemaVersion: seeded.meta.schemaVersion,
+          seededProjectStatuses: seeded.boards.projects.statusOrder,
+          seededTaskStatus: seeded.tasks[0].status,
+          rootFileIds: seeded.fileHierarchy.rootFileIds,
+          createdProjects: created.projects.length,
+          createdProjectStatus: createdProject.status,
+          createdProjectSlug: createdProject.slug,
+          createdProjectTaskIds: createdProject.taskIds,
+          updatedRoute: updated.navigation.lastRoute,
+          storedSchemaVersion: JSON.parse(storage.getItem("jakal.workspace.snapshot")).meta.schemaVersion,
         }));
         """
     )
     payload = json.loads(result)
 
     assert payload == {
-        "seededRoute": "projects",
-        "seededProjects": 1,
-        "updatedProjects": 2,
-        "storedProjects": 2,
-        "schemaVersion": 1,
+        "seededSchemaVersion": 2,
+        "seededProjectStatuses": ["planned", "active", "paused", "done"],
+        "seededTaskStatus": "in_progress",
+        "rootFileIds": ["file-shell-root"],
+        "createdProjects": 2,
+        "createdProjectStatus": "planned",
+        "createdProjectSlug": "second-project",
+        "createdProjectTaskIds": [],
+        "updatedRoute": "files",
+        "storedSchemaVersion": 2,
+    }
+
+
+def test_repository_migrates_v1_snapshots_to_v2_shape():
+    result = run_node(
+        """
+        import { createWorkspaceRepository } from "./desktop/src/shared/storage/workspaceRepository.js";
+
+        const storage = {
+          cache: new Map([
+            ["jakal.workspace.snapshot", JSON.stringify({
+              meta: {
+                schemaVersion: 1,
+                seededAt: "2026-03-28T00:00:00.000Z",
+                updatedAt: "2026-03-28T00:00:00.000Z",
+              },
+              navigation: {
+                lastRoute: "tasks",
+              },
+              projects: [
+                {
+                  id: "project-legacy",
+                  title: "Legacy project",
+                  summary: "Migrated from v1.",
+                  links: {
+                    taskIds: ["task-legacy"],
+                    ideaIds: ["idea-legacy"],
+                    fileIds: ["file-legacy"],
+                  },
+                },
+              ],
+              tasks: [
+                {
+                  id: "task-legacy",
+                  title: "Legacy task",
+                  summary: "Migrated from v1.",
+                  links: {
+                    projectIds: ["project-legacy"],
+                    ideaIds: ["idea-legacy"],
+                    fileIds: ["file-legacy"],
+                  },
+                },
+              ],
+              ideas: [
+                {
+                  id: "idea-legacy",
+                  title: "Legacy idea",
+                  summary: "Migrated from v1.",
+                  links: {
+                    projectIds: ["project-legacy"],
+                    taskIds: ["task-legacy"],
+                    fileIds: ["file-legacy"],
+                  },
+                },
+              ],
+              files: [
+                {
+                  id: "file-legacy",
+                  title: "legacy.md",
+                  summary: "Migrated from v1.",
+                  links: {
+                    projectIds: ["project-legacy"],
+                    taskIds: ["task-legacy"],
+                    ideaIds: ["idea-legacy"],
+                  },
+                },
+              ],
+            })],
+          ]),
+          getItem(key) { return this.cache.has(key) ? this.cache.get(key) : null; },
+          setItem(key, value) { this.cache.set(key, value); },
+          removeItem(key) { this.cache.delete(key); },
+        };
+
+        const repository = createWorkspaceRepository({ storage });
+        const snapshot = repository.readSnapshot();
+
+        console.log(JSON.stringify({
+          schemaVersion: snapshot.meta.schemaVersion,
+          route: snapshot.navigation.lastRoute,
+          projectStatus: snapshot.projects[0].status,
+          projectTaskIds: snapshot.projects[0].taskIds,
+          taskProjectId: snapshot.tasks[0].projectId,
+          taskOrder: snapshot.tasks[0].order,
+          ideaStage: snapshot.ideas[0].stage,
+          fileName: snapshot.files[0].name,
+          rootFileIds: snapshot.fileHierarchy.rootFileIds,
+        }));
+        """
+    )
+    payload = json.loads(result)
+
+    assert payload == {
+        "schemaVersion": 2,
+        "route": "tasks",
+        "projectStatus": "planned",
+        "projectTaskIds": ["task-legacy"],
+        "taskProjectId": "project-legacy",
+        "taskOrder": 0,
+        "ideaStage": "captured",
+        "fileName": "legacy.md",
+        "rootFileIds": ["file-legacy"],
     }
 
 
