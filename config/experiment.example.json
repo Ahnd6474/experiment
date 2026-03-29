@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "paths": {
+    "localRoot": ".local",
+    "upstreamRoot": ".local/upstream",
+    "upstreamCheckout": ".local/upstream/jakal-flow",
+    "targetsRoot": ".local/targets",
+    "workspaceRoot": ".local/workspaces",
+    "logsRoot": ".local/logs",
+    "profilesRoot": "config/profiles",
+    "fixturesRoot": "fixtures"
+  },
+  "runtime": {
+    "pythonCommand": "python",
+    "venvPath": ".local/venv",
+    "defaultProfile": "jakal-flow-local",
+    "shell": "powershell",
+    "logLevel": "INFO"
+  },
+  "entryScripts": {
+    "checkPrereqs": "scripts/check-prereqs.ps1",
+    "bootstrap": "scripts/bootstrap.ps1",
+    "cleanLocalState": "scripts/clean-local-state.ps1",
+    "materializeTarget": "scripts/materialize-target.ps1",
+    "invokeVerification": "scripts/invoke-verification.ps1"
+  },
+  "prerequisites": {
+    "git": {
+      "command": "git",
+      "required": true
+    },
+    "python": {
+      "command": "python",
+      "minimumVersion": "3.11",
+      "required": true
+    },
+    "codex": {
+      "command": "codex",
+      "required": false
+    }
+  }
+}
