@@ -11,3 +11,8 @@ build/
 dist/
 
 _tmp_*/
+
+.local/
+.parallel_runs/
+.lineages/
+jakal-flow-logs/

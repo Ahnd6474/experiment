@@ -151,6 +151,26 @@ def test_surface_route_entry_modules_exist_with_frozen_contract_docstring():
             "export default function",
         )
 
+    ideas_source = read_text("desktop/src/features/ideas/IdeasRoute.jsx")
+    files_source = read_text("desktop/src/features/files/FilesRoute.jsx")
+
+    assert_contains(
+        ideas_source,
+        "Incubation and future project tracking",
+        "Incubation pipeline",
+        "Future project queue",
+        "promotedProjectId",
+        "snapshot.boards.ideas.stageOrder",
+    )
+    assert_contains(
+        files_source,
+        "Drive-style file organization",
+        "Folder tree",
+        "Quick access",
+        "snapshot.fileHierarchy.rootFileIds",
+        "childIds",
+    )
+
 
 def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
     result = run_node(
