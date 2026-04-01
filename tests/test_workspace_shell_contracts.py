@@ -157,6 +157,38 @@ def test_surface_route_entry_modules_exist_with_frozen_contract_docstring():
         )
 
 
+def test_projects_and_tasks_routes_render_hub_and_board_against_shared_snapshot_contract():
+    projects_source = read_text("desktop/src/features/projects/ProjectsRoute.jsx")
+    tasks_source = read_text("desktop/src/features/tasks/TasksRoute.jsx")
+
+    assert_contains(
+        projects_source,
+        "selectProjectBoard(snapshot)",
+        "selectWorkspaceOverview(snapshot)",
+        "selectIntegrationOverview(snapshot)",
+        "GitHub-like project hub",
+        "repository.createProject({",
+        "repository.createTask({",
+        "repository.moveProject(item.entity.id, {",
+        "repository.updateProject(selectedProject.entity.id, {",
+        "Create linked task",
+        "Selected repository",
+    )
+    assert_contains(
+        tasks_source,
+        "selectTaskBoard(snapshot)",
+        "selectWorkspaceOverview(snapshot)",
+        "selectWorkspaceReferenceLists(snapshot)",
+        "Active work board",
+        "repository.createTask({",
+        "repository.moveTask(item.entity.id, {",
+        "repository.updateTask(item.entity.id, {",
+        "Reassign project",
+        "Advance card",
+        "Seed a board card",
+    )
+
+
 def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
     result = run_node(
         """
