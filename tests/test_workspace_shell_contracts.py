@@ -152,6 +152,24 @@ def test_surface_route_entry_modules_exist_with_frozen_contract_docstring():
         )
 
 
+def test_projects_route_presents_a_github_like_project_hub_surface():
+    source = read_text("desktop/src/features/projects/ProjectsRoute.jsx")
+
+    assert_contains(
+        source,
+        "selectIntegrationOverview",
+        "selectProjectBoard",
+        "Repository and delivery hub",
+        "Project board",
+        "Repository links",
+        "projectBoard.groups.map",
+        "integrationOverview.providers.map",
+        "formatRecordSummary",
+        "statusLabels",
+        "Workspace graph",
+    )
+
+
 def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
     result = run_node(
         """

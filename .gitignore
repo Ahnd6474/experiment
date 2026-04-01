@@ -9,5 +9,10 @@ __pycache__/
 node_modules/
 build/
 dist/
+.local/
 
 _tmp_*/
+
+.parallel_runs/
+.lineages/
+jakal-flow-logs/
