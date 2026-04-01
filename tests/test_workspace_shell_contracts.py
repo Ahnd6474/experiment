@@ -189,6 +189,39 @@ def test_projects_and_tasks_routes_render_hub_and_board_against_shared_snapshot_
     )
 
 
+def test_ideas_and_files_routes_upgrade_from_placeholder_shells():
+    ideas_source = read_text("desktop/src/features/ideas/IdeasRoute.jsx")
+    files_source = read_text("desktop/src/features/files/FilesRoute.jsx")
+
+    assert_contains(
+        ideas_source,
+        "selectIdeaBoard",
+        "selectWorkspaceDetail",
+        "Incubation board",
+        "All stages",
+        "Ready to promote",
+        "Selected idea",
+        "Linked projects",
+        "setActiveStage",
+        "setSelectedIdeaId",
+    )
+    assert_contains(
+        files_source,
+        "selectFileTree",
+        "selectWorkspaceDetail",
+        "Drive-style organizer",
+        "Root folders",
+        "Recent docs",
+        "Current folder",
+        "Connected work",
+        "setActiveFolderId",
+        "setSelectedFileId",
+    )
+    assert "Local file organizer" not in files_source
+    assert "File hierarchy primitives are frozen" not in files_source
+    assert "Idea lifecycle stages are now frozen" not in ideas_source
+
+
 def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
     result = run_node(
         """
