@@ -152,6 +152,20 @@ def test_surface_route_entry_modules_exist_with_frozen_contract_docstring():
         )
 
 
+def test_tasks_route_exposes_a_structured_board_surface():
+    tasks_route_source = read_text("desktop/src/features/tasks/TasksRoute.jsx")
+
+    assert_contains(
+        tasks_route_source,
+        "Task board",
+        "Task board summary",
+        "groupTasksByStatus",
+        "formatStatusLabel",
+        "statusOrder.map",
+        "Nothing is parked here yet",
+    )
+
+
 def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
     result = run_node(
         """
