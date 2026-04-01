@@ -951,7 +951,11 @@ export const normalizeWorkspaceSnapshotV2 = normalizeWorkspaceSnapshotV3;
 export function createSeedWorkspaceSnapshot() {
   const now = new Date().toISOString();
   const rootFolderId = "file-shell-root";
+  const briefsFolderId = "file-shell-briefs";
   const guideFileId = "file-shell-guide";
+  const assetsFolderId = "file-shell-assets";
+  const roadmapFileId = "file-shell-roadmap";
+  const syncSpecFileId = "file-shell-sync-spec";
 
   return {
     meta: {
@@ -993,6 +997,23 @@ export function createSeedWorkspaceSnapshot() {
           ),
           createWorkspaceIntegrationRecord(
             {
+              id: "jakal-flow-project-sync",
+              provider: "jakal_flow",
+              entityType: "project",
+              entityId: "project-sync",
+              externalId: "workspace-sync-project",
+              externalKey: "JKL-SYNC-1",
+              title: "Jakal Flow sync bridge",
+              url: "https://github.com/Ahnd6474/Jakal-flow",
+              status: "synced",
+              metadata: {
+                lane: "planned",
+              },
+            },
+            { now, provider: "jakal_flow" },
+          ),
+          createWorkspaceIntegrationRecord(
+            {
               id: "jakal-flow-task-shell",
               provider: "jakal_flow",
               entityType: "task",
@@ -1004,6 +1025,23 @@ export function createSeedWorkspaceSnapshot() {
               status: "pending",
               metadata: {
                 board: "execution",
+              },
+            },
+            { now, provider: "jakal_flow" },
+          ),
+          createWorkspaceIntegrationRecord(
+            {
+              id: "jakal-flow-idea-sync",
+              provider: "jakal_flow",
+              entityType: "idea",
+              entityId: "idea-sync",
+              externalId: "workspace-sync-idea",
+              externalKey: "JKL-SYNC-2",
+              title: "Sync dashboard concept",
+              url: "https://github.com/Ahnd6474/Jakal-flow",
+              status: "pending",
+              metadata: {
+                lane: "shaping",
               },
             },
             { now, provider: "jakal_flow" },
@@ -1036,6 +1074,22 @@ export function createSeedWorkspaceSnapshot() {
           ),
           createWorkspaceIntegrationRecord(
             {
+              id: "github-project-sync",
+              provider: "github",
+              entityType: "project",
+              entityId: "project-sync",
+              externalId: "Ahnd6474/Jakal-flow",
+              externalKey: "Ahnd6474/Jakal-flow",
+              title: "Jakal-flow",
+              url: "https://github.com/Ahnd6474/Jakal-flow",
+              repository: "Ahnd6474/Jakal-flow",
+              branch: "main",
+              status: "synced",
+            },
+            { now, provider: "github" },
+          ),
+          createWorkspaceIntegrationRecord(
+            {
               id: "github-file-shell-guide",
               provider: "github",
               entityType: "file",
@@ -1047,6 +1101,22 @@ export function createSeedWorkspaceSnapshot() {
               repository: "Ahnd6474/experiment",
               branch: "main",
               status: "synced",
+            },
+            { now, provider: "github" },
+          ),
+          createWorkspaceIntegrationRecord(
+            {
+              id: "github-file-roadmap",
+              provider: "github",
+              entityType: "file",
+              entityId: roadmapFileId,
+              externalId: "workspace-roadmap-md",
+              externalKey: "workspace-roadmap.md",
+              title: "workspace-roadmap.md",
+              url: "https://github.com/Ahnd6474/experiment",
+              repository: "Ahnd6474/experiment",
+              branch: "main",
+              status: "pending",
             },
             { now, provider: "github" },
           ),
@@ -1063,9 +1133,24 @@ export function createSeedWorkspaceSnapshot() {
           description:
             "Route modules fan out from the shell while shared records stay frozen in WorkspaceSnapshot v3.",
           status: "active",
-          taskIds: ["task-shell"],
+          taskIds: ["task-shell", "task-roadmap"],
           ideaIds: ["idea-shell"],
-          fileIds: [rootFolderId, guideFileId],
+          fileIds: [rootFolderId, briefsFolderId, guideFileId, roadmapFileId],
+        },
+        { now },
+      ),
+      createWorkspaceProject(
+        {
+          id: "project-sync",
+          slug: "jakal-flow-sync",
+          title: "Jakal Flow sync bridge",
+          summary: "Companion project for aligning local-first workspace records with Jakal Flow.",
+          description:
+            "This seeded project gives the projects, tasks, ideas, and files routes a second shared graph to render against.",
+          status: "planned",
+          taskIds: ["task-sync"],
+          ideaIds: ["idea-sync"],
+          fileIds: [assetsFolderId, syncSpecFileId],
         },
         { now },
       ),
@@ -1084,6 +1169,31 @@ export function createSeedWorkspaceSnapshot() {
         },
         { now },
       ),
+      createWorkspaceTask(
+        {
+          id: "task-roadmap",
+          projectId: "project-shell",
+          title: "Stage route implementation backlog",
+          summary: "Seeded ready-state work for downstream board rendering.",
+          status: "ready",
+          order: 0,
+          fileIds: [roadmapFileId],
+        },
+        { now },
+      ),
+      createWorkspaceTask(
+        {
+          id: "task-sync",
+          projectId: "project-sync",
+          ideaId: "idea-sync",
+          title: "Define sync checkpoints",
+          summary: "Track Jakal Flow handoff milestones inside the shared task board.",
+          status: "backlog",
+          order: 0,
+          fileIds: [syncSpecFileId],
+        },
+        { now },
+      ),
     ],
     ideas: [
       createWorkspaceIdea(
@@ -1099,6 +1209,19 @@ export function createSeedWorkspaceSnapshot() {
         },
         { now },
       ),
+      createWorkspaceIdea(
+        {
+          id: "idea-sync",
+          title: "Sync dashboard concept",
+          summary:
+            "Seed a second idea lane so the ideas route can render captured and shaping work from the same snapshot.",
+          stage: "captured",
+          projectIds: ["project-sync"],
+          taskIds: ["task-sync"],
+          fileIds: [syncSpecFileId],
+        },
+        { now },
+      ),
     ],
     files: [
       createWorkspaceFile(
@@ -1107,7 +1230,19 @@ export function createSeedWorkspaceSnapshot() {
           name: "workspace",
           summary: "Top-level file hierarchy root for the seeded shell.",
           kind: "folder",
-          childIds: [guideFileId],
+          childIds: [briefsFolderId, guideFileId, roadmapFileId],
+          projectIds: ["project-shell"],
+        },
+        { now, defaultKind: "folder" },
+      ),
+      createWorkspaceFile(
+        {
+          id: briefsFolderId,
+          name: "briefs",
+          summary: "Nested folder for route implementation notes and delivery briefs.",
+          kind: "folder",
+          parentId: rootFolderId,
+          childIds: [],
           projectIds: ["project-shell"],
         },
         { now, defaultKind: "folder" },
@@ -1124,6 +1259,45 @@ export function createSeedWorkspaceSnapshot() {
           projectIds: ["project-shell"],
           taskIds: ["task-shell"],
           ideaIds: ["idea-shell"],
+        },
+        { now, defaultKind: "document" },
+      ),
+      createWorkspaceFile(
+        {
+          id: roadmapFileId,
+          name: "workspace-roadmap.md",
+          summary:
+            "Shared route roadmap for projects, tasks, ideas, and files work.",
+          kind: "document",
+          extension: "md",
+          parentId: rootFolderId,
+          projectIds: ["project-shell"],
+          taskIds: ["task-roadmap"],
+        },
+        { now, defaultKind: "document" },
+      ),
+      createWorkspaceFile(
+        {
+          id: assetsFolderId,
+          name: "sync-assets",
+          summary: "Second root folder so the file organizer has multiple top-level branches.",
+          kind: "folder",
+          childIds: [syncSpecFileId],
+          projectIds: ["project-sync"],
+        },
+        { now, defaultKind: "folder" },
+      ),
+      createWorkspaceFile(
+        {
+          id: syncSpecFileId,
+          name: "sync-spec.md",
+          summary: "Seed document linked to the sync project, its task, and its idea.",
+          kind: "document",
+          extension: "md",
+          parentId: assetsFolderId,
+          projectIds: ["project-sync"],
+          taskIds: ["task-sync"],
+          ideaIds: ["idea-sync"],
         },
         { now, defaultKind: "document" },
       ),

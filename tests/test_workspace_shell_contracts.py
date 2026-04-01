@@ -101,6 +101,8 @@ def test_repository_adapter_exposes_v3_write_boundary_and_integration_adapter():
         storage_index_source,
         "WorkspaceIntegrationAdapter",
         "createWorkspaceIntegrationAdapter",
+        "createSeedWorkspaceSnapshot",
+        "normalizeWorkspaceSnapshotV3",
     )
     assert_contains(
         selectors_source,
@@ -110,6 +112,9 @@ def test_repository_adapter_exposes_v3_write_boundary_and_integration_adapter():
         "export function selectIdeaBoard",
         "export function selectFileTree",
         "export function selectIntegrationOverview",
+        "export function selectWorkspaceReferenceLists",
+        "export function selectWorkspaceOverview",
+        "export function selectWorkspaceSurface",
     )
 
 
@@ -165,6 +170,9 @@ def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
           selectIntegrationOverview,
           selectProjectBoard,
           selectTaskBoard,
+          selectWorkspaceOverview,
+          selectWorkspaceReferenceLists,
+          selectWorkspaceSurface,
           selectWorkspaceDetail,
         } from "./desktop/src/shared/selectors/index.js";
 
@@ -348,6 +356,10 @@ def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
         const ideaDetail = selectWorkspaceDetail(selectorSnapshot, "idea", createdIdea.id);
         const fileDetail = selectWorkspaceDetail(selectorSnapshot, "file", createdFile.id);
         const integrationOverview = selectIntegrationOverview(selectorSnapshot);
+        const workspaceOverview = selectWorkspaceOverview(selectorSnapshot);
+        const referenceLists = selectWorkspaceReferenceLists(selectorSnapshot);
+        const tasksSurface = selectWorkspaceSurface(selectorSnapshot, "tasks");
+        const filesSurface = selectWorkspaceSurface(selectorSnapshot, "files");
         const afterDeleteProject = repository.deleteProject(createdProject.id);
         const deletedTask = afterDeleteProject.tasks.find((task) => task.id === createdTask.id);
         const deletedFile = afterDeleteProject.files.find((file) => file.id === createdFile.id);
@@ -360,6 +372,10 @@ def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
           seededJakalFlowRecords: seeded.integrations.jakalFlow.records.length,
           seededGitHubRecords: seeded.integrations.github.records.length,
           seededRootFileIds: seeded.fileHierarchy.rootFileIds,
+          seededProjectIds: seeded.projects.map((project) => project.id),
+          seededTaskStatuses: seeded.tasks.map((task) => task.status),
+          seededIdeaStages: seeded.ideas.map((idea) => idea.stage),
+          seededFileIds: seeded.files.map((file) => file.id),
           movedProjectStatus: movedProject.status,
           activeProjectIds: activeProjects.items.map((item) => item.entity.id),
           linkedProjectTaskIds: linkedTaskSnapshot.projects.find((project) => project.id === createdProject.id).taskIds,
@@ -396,6 +412,19 @@ def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
             recordCount: provider.recordCount,
             countsByEntity: provider.countsByEntity,
           })),
+          workspaceOverviewRoutes: workspaceOverview.routes,
+          workspaceOverviewTotals: workspaceOverview.totals,
+          workspaceOverviewLastRoute: workspaceOverview.lastRoute,
+          referenceProjectLabels: referenceLists.projects.map((project) => project.label),
+          referenceTaskLabels: referenceLists.tasks.map((task) => task.label),
+          tasksSurfaceGroupKeys: tasksSurface.board.groups.map((group) => group.key),
+          tasksSurfaceReferenceCounts: {
+            projects: tasksSurface.references.projects.length,
+            tasks: tasksSurface.references.tasks.length,
+            ideas: tasksSurface.references.ideas.length,
+            files: tasksSurface.references.files.length,
+          },
+          filesSurfaceRootIds: filesSurface.tree.roots.map((node) => node.entity.id),
           deletedTaskProjectId: deletedTask.projectId,
           deletedFileProjectIds: deletedFile.projectIds,
           storedSchemaVersion: JSON.parse(storage.getItem("jakal.workspace.snapshot")).meta.schemaVersion,
@@ -405,9 +434,13 @@ def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
     payload = json.loads(result)
 
     assert payload["seededSchemaVersion"] == 3
-    assert payload["seededJakalFlowRecords"] == 2
-    assert payload["seededGitHubRecords"] == 2
-    assert payload["seededRootFileIds"] == ["file-shell-root"]
+    assert payload["seededJakalFlowRecords"] == 4
+    assert payload["seededGitHubRecords"] == 4
+    assert payload["seededRootFileIds"] == ["file-shell-root", "file-shell-assets"]
+    assert payload["seededProjectIds"] == ["project-shell", "project-sync"]
+    assert set(payload["seededTaskStatuses"]) == {"in_progress", "ready", "backlog"}
+    assert set(payload["seededIdeaStages"]) == {"shaping", "captured"}
+    assert "file-shell-sync-spec" in payload["seededFileIds"]
     assert payload["movedProjectStatus"] == "active"
     assert payload["activeProjectIds"][0]
     assert payload["movedTaskStatus"] == "in_progress"
@@ -455,6 +488,49 @@ def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
             "countsByEntity": {"project": 1, "file": 1},
         },
     ]
+    assert payload["workspaceOverviewLastRoute"] == "projects"
+    assert payload["workspaceOverviewTotals"] == {
+        "projects": 4,
+        "tasks": 4,
+        "ideas": 3,
+        "files": 8,
+    }
+    assert payload["workspaceOverviewRoutes"] == [
+        {
+            "key": "projects",
+            "label": "Projects",
+            "itemCount": 4,
+            "integrationCount": 1,
+        },
+        {
+            "key": "tasks",
+            "label": "Tasks",
+            "itemCount": 4,
+            "integrationCount": 1,
+        },
+        {
+            "key": "ideas",
+            "label": "Ideas",
+            "itemCount": 3,
+            "integrationCount": 1,
+        },
+        {
+            "key": "files",
+            "label": "Files",
+            "itemCount": 8,
+            "integrationCount": 1,
+        },
+    ]
+    assert "Workspace shell" in payload["referenceProjectLabels"]
+    assert "Freeze repository boundary" in payload["referenceTaskLabels"]
+    assert payload["tasksSurfaceGroupKeys"] == ["backlog", "ready", "in_progress", "done"]
+    assert payload["tasksSurfaceReferenceCounts"] == {
+        "projects": 4,
+        "tasks": 4,
+        "ideas": 3,
+        "files": 8,
+    }
+    assert payload["filesSurfaceRootIds"] == ["file-shell-root", "file-shell-assets"]
 
 
 def test_repository_migrates_legacy_snapshot_to_v3_shape():

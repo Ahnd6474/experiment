@@ -11,6 +11,29 @@ const IntegrationDescriptors = Object.freeze([
   }),
 ]);
 
+const WorkspaceSurfaceDescriptors = Object.freeze([
+  Object.freeze({
+    key: "projects",
+    label: "Projects",
+    entityType: "project",
+  }),
+  Object.freeze({
+    key: "tasks",
+    label: "Tasks",
+    entityType: "task",
+  }),
+  Object.freeze({
+    key: "ideas",
+    label: "Ideas",
+    entityType: "idea",
+  }),
+  Object.freeze({
+    key: "files",
+    label: "Files",
+    entityType: "file",
+  }),
+]);
+
 function createEntityMap(collection = []) {
   return new Map(collection.map((entry) => [entry.id, entry]));
 }
@@ -93,6 +116,67 @@ function buildWorkspaceContext(snapshot) {
     filesById: createEntityMap(snapshot.files ?? []),
     integrationIndex: buildIntegrationIndex(snapshot),
   };
+}
+
+function countIntegrationsByEntityType(snapshot, entityType) {
+  return IntegrationDescriptors.reduce((count, { key }) => {
+    const records = snapshot.integrations?.[key]?.records ?? [];
+    return count + records.filter((record) => record.entityType === entityType).length;
+  }, 0);
+}
+
+function createEntityReference(entityType, entity) {
+  if (entityType === "project") {
+    return {
+      id: entity.id,
+      entityType,
+      label: entity.title,
+      status: entity.status,
+      summary: entity.summary,
+      updatedAt: entity.updatedAt,
+    };
+  }
+
+  if (entityType === "task") {
+    return {
+      id: entity.id,
+      entityType,
+      label: entity.title,
+      status: entity.status,
+      summary: entity.summary,
+      updatedAt: entity.updatedAt,
+      projectId: entity.projectId,
+      ideaId: entity.ideaId,
+      order: entity.order,
+    };
+  }
+
+  if (entityType === "idea") {
+    return {
+      id: entity.id,
+      entityType,
+      label: entity.title,
+      status: entity.stage,
+      summary: entity.summary,
+      updatedAt: entity.updatedAt,
+      promotedProjectId: entity.promotedProjectId,
+    };
+  }
+
+  if (entityType === "file") {
+    return {
+      id: entity.id,
+      entityType,
+      label: entity.name,
+      status: entity.kind,
+      summary: entity.summary,
+      updatedAt: entity.updatedAt,
+      parentId: entity.parentId,
+      childCount: entity.childIds.length,
+    };
+  }
+
+  return null;
 }
 
 function createEntityDetail(entityType, entity, context) {
@@ -294,4 +378,91 @@ export function selectIntegrationOverview(snapshot) {
       };
     }),
   };
+}
+
+export function selectWorkspaceReferenceLists(snapshot) {
+  return {
+    projects: (snapshot.projects ?? []).map((project) =>
+      createEntityReference("project", project),
+    ),
+    tasks: [...(snapshot.tasks ?? [])]
+      .sort((left, right) => left.order - right.order)
+      .map((task) => createEntityReference("task", task)),
+    ideas: (snapshot.ideas ?? []).map((idea) => createEntityReference("idea", idea)),
+    files: (snapshot.files ?? []).map((file) => createEntityReference("file", file)),
+  };
+}
+
+export function selectWorkspaceOverview(snapshot) {
+  const references = selectWorkspaceReferenceLists(snapshot);
+  const integrationOverview = selectIntegrationOverview(snapshot);
+
+  return {
+    lastRoute: snapshot.navigation?.lastRoute ?? "projects",
+    totals: {
+      projects: references.projects.length,
+      tasks: references.tasks.length,
+      ideas: references.ideas.length,
+      files: references.files.length,
+    },
+    routes: WorkspaceSurfaceDescriptors.map(({ key, label, entityType }) => ({
+      key,
+      label,
+      itemCount: references[key].length,
+      integrationCount: countIntegrationsByEntityType(snapshot, entityType),
+    })),
+    integrations: integrationOverview.providers,
+  };
+}
+
+export function selectWorkspaceSurface(snapshot, routeKey) {
+  if (routeKey === "projects") {
+    const board = selectProjectBoard(snapshot);
+
+    return {
+      routeKey,
+      label: "Projects",
+      itemCount: snapshot.projects?.length ?? 0,
+      board,
+      references: selectWorkspaceReferenceLists(snapshot),
+    };
+  }
+
+  if (routeKey === "tasks") {
+    const board = selectTaskBoard(snapshot);
+
+    return {
+      routeKey,
+      label: "Tasks",
+      itemCount: snapshot.tasks?.length ?? 0,
+      board,
+      references: selectWorkspaceReferenceLists(snapshot),
+    };
+  }
+
+  if (routeKey === "ideas") {
+    const board = selectIdeaBoard(snapshot);
+
+    return {
+      routeKey,
+      label: "Ideas",
+      itemCount: snapshot.ideas?.length ?? 0,
+      board,
+      references: selectWorkspaceReferenceLists(snapshot),
+    };
+  }
+
+  if (routeKey === "files") {
+    const tree = selectFileTree(snapshot);
+
+    return {
+      routeKey,
+      label: "Files",
+      itemCount: snapshot.files?.length ?? 0,
+      tree,
+      references: selectWorkspaceReferenceLists(snapshot),
+    };
+  }
+
+  return null;
 }
