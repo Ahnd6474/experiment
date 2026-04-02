@@ -104,6 +104,14 @@ Optional harness prerequisites:
 - PowerShell 5.1+ on Windows
 - `git`
 - `codex` only when using the `jakal-flow-local` managed profile
+- `OPENAI_API_KEY` only when using the `jakal-flow-local` managed profile
+
+## Profiles And Configuration
+
+- `config/experiment.example.json` is the checked-in harness config contract used by the PowerShell entry scripts.
+- `config/profiles/jakal-flow-local.json` is the default managed profile. It targets the upstream `Jakal-flow` repository under `.local/`, expects external tooling, and is the profile used by `scripts/invoke-verification.ps1` when no profile id is supplied.
+- `config/profiles/sample-local.json` is the lightweight local fixture profile. It materializes the tracked sample seed into `.local/targets/sample-local` and is the safest local smoke path in this repository.
+- Generated harness state lives under `.local/`. The repo should remain runnable after `.local/` is deleted and recreated.
 
 ## Commands
 
@@ -127,6 +135,12 @@ Run repository verification:
 python -m pytest
 ```
 
+Check managed-profile prerequisites:
+
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-prereqs.ps1
+```
+
 Materialize the local sample target fixture:
 
 ```bash
@@ -139,6 +153,24 @@ Run ordered verification phases for the default managed profile:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/invoke-verification.ps1
 ```
 
+Clean generated local harness state:
+
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-local-state.ps1
+```
+
+## Verified Closeout Checks
+
+Verified in this repository during closeout:
+
+- `python -m pytest`
+- `cd desktop && npm run build`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/materialize-target.ps1 -ProfileId sample-local`
+
+Not run in closeout:
+
+- `scripts/invoke-verification.ps1` against the default `jakal-flow-local` profile, because that path depends on external tools and a mutable upstream checkout under `.local/`
+
 ## Verified Behavior
 
 - `python -m pytest` passes from the repository root
@@ -148,6 +180,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/invoke-verification.
 - all writes flow through `WorkspaceRepository`
 - `scripts/materialize-target.ps1 -ProfileId sample-local` resolves to the tracked sample materializer
 - `scripts/invoke-verification.ps1` exists as the fixed harness verification entrypoint described by `docs/ARCHITECTURE.md`
+- `scripts/check-prereqs.ps1` validates shared prerequisite definitions from `config/experiment.example.json`
+- `scripts/clean-local-state.ps1` removes configured generated state under `.local/`
 
 ## Architecture Notes
 
@@ -170,6 +204,7 @@ For harness-oriented work, `config/experiment.example.json` and `scripts/profile
 - Persistence targets browser `localStorage`; there is no filesystem sync or multi-user support.
 - The Tauri side is incomplete, so this repository is not yet a packaged desktop application.
 - The managed verification flow for `jakal-flow-local` still depends on external tools and a mutable target checkout under `.local/`.
+- The repository currently mixes two concerns: the React workspace shell and the local harness scripts that prepare or verify companion work.
 
 ## Next Extension Points
 
