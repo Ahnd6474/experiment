@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   selectFileTree,
   selectWorkspaceDetail,
@@ -106,6 +106,27 @@ const styles = {
     gap: "8px",
     marginTop: "14px",
   },
+  controlRow: {
+    display: "grid",
+    gap: "12px",
+    marginTop: "18px",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    alignItems: "center",
+  },
+  searchInput: {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: "14px",
+    border: "1px solid rgba(93, 107, 121, 0.16)",
+    backgroundColor: "#ffffff",
+    color: "#102033",
+  },
+  filterRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginTop: "14px",
+  },
   crumbButton: {
     padding: "8px 12px",
     borderRadius: "999px",
@@ -185,7 +206,60 @@ const styles = {
     backgroundColor: "#ffffff",
     color: "#5d6b79",
   },
+  helperCard: {
+    display: "grid",
+    gap: "12px",
+    marginTop: "18px",
+    padding: "16px",
+    borderRadius: "18px",
+    background:
+      "linear-gradient(135deg, rgba(16, 32, 51, 0.98), rgba(42, 79, 104, 0.92))",
+    color: "#f8fafb",
+  },
+  helperList: {
+    display: "grid",
+    gap: "10px",
+    padding: 0,
+    margin: 0,
+    listStyle: "none",
+  },
+  helperItem: {
+    padding: "12px 14px",
+    borderRadius: "14px",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+  },
+  routeLinks: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+    marginTop: "6px",
+  },
+  routeLink: {
+    padding: "9px 12px",
+    borderRadius: "999px",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    color: "#f8fafb",
+    textDecoration: "none",
+    fontWeight: 600,
+  },
+  detailSection: {
+    marginTop: "18px",
+  },
+  detailHeading: {
+    margin: "0 0 10px",
+    fontSize: "14px",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    color: "#5d6b79",
+  },
 };
+
+const FILE_VIEW_FILTERS = [
+  { key: "all", label: "All items" },
+  { key: "folders", label: "Folders" },
+  { key: "documents", label: "Documents" },
+  { key: "linked", label: "Linked only" },
+];
 
 function formatFileKind(kind, extension) {
   if (kind === "folder") {
@@ -226,6 +300,73 @@ function smartCollections(snapshot) {
   };
 }
 
+function normalizeSearchValue(value) {
+  return value.trim().toLowerCase();
+}
+
+function matchesFileQuery(node, normalizedQuery) {
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const searchIndex = [
+    node.entity.name,
+    node.entity.summary,
+    node.entity.extension,
+    node.related.projects.map((project) => project.name).join(" "),
+    node.related.tasks.map((task) => task.name).join(" "),
+    node.related.ideas.map((idea) => idea.name).join(" "),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return searchIndex.includes(normalizedQuery);
+}
+
+function matchesFileFilter(node, activeFilter) {
+  if (activeFilter === "folders") {
+    return node.entity.kind === "folder";
+  }
+
+  if (activeFilter === "documents") {
+    return node.entity.kind === "document";
+  }
+
+  if (activeFilter === "linked") {
+    return (
+      node.related.projects.length > 0 ||
+      node.related.tasks.length > 0 ||
+      node.related.ideas.length > 0
+    );
+  }
+
+  return true;
+}
+
+function describeNextStep(detail) {
+  if (!detail) {
+    return "Select a folder or document to inspect its workspace handoff and linked records.";
+  }
+
+  if (detail.entity.kind === "folder") {
+    return "Use folders to stage local-first working sets before linking documents back to active delivery work.";
+  }
+
+  if (detail.related.tasks.length > 0) {
+    return "This document is already tied to execution. Open Tasks to keep delivery context and file support aligned.";
+  }
+
+  if (detail.related.projects.length > 0) {
+    return "This document supports a live project thread. Jump to Projects to review scope and downstream task impact.";
+  }
+
+  if (detail.related.ideas.length > 0) {
+    return "This document is supporting incubation work. Review Ideas before promoting it into a committed project flow.";
+  }
+
+  return "This document is still unlinked. Keep it local until it is ready to attach to a project, task, or idea.";
+}
+
 export default function FilesRoute({ snapshot }) {
   const rootTree = useMemo(() => selectFileTree(snapshot), [snapshot]);
   const rootIds = useMemo(
@@ -234,6 +375,13 @@ export default function FilesRoute({ snapshot }) {
   );
   const [activeFolderId, setActiveFolderId] = useState(rootIds[0] ?? null);
   const [selectedFileId, setSelectedFileId] = useState(rootIds[0] ?? null);
+  const [searchValue, setSearchValue] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const deferredSearchValue = useDeferredValue(searchValue);
+  const normalizedSearchValue = useMemo(
+    () => normalizeSearchValue(deferredSearchValue),
+    [deferredSearchValue],
+  );
 
   useEffect(() => {
     if (activeFolderId && snapshot.files.some((file) => file.id === activeFolderId)) {
@@ -251,6 +399,15 @@ export default function FilesRoute({ snapshot }) {
     ? selectWorkspaceDetail(snapshot, "file", activeFolderId)
     : null;
   const activeItems = activeFolderId ? activeTree.roots : rootTree.roots;
+  const filteredItems = useMemo(
+    () =>
+      activeItems.filter(
+        (node) =>
+          matchesFileFilter(node, activeFilter) &&
+          matchesFileQuery(node, normalizedSearchValue),
+      ),
+    [activeFilter, activeItems, normalizedSearchValue],
+  );
   const flattenedRootNodes = useMemo(() => flattenNodes(rootTree.roots), [rootTree]);
   const collections = useMemo(() => smartCollections(snapshot), [snapshot]);
   const selectedNode =
@@ -281,6 +438,18 @@ export default function FilesRoute({ snapshot }) {
   const linkedFiles = snapshot.files.filter(
     (file) => file.projectIds.length || file.taskIds.length || file.ideaIds.length,
   ).length;
+  const unlinkedDocuments = snapshot.files.filter(
+    (file) =>
+      file.kind === "document" &&
+      !file.projectIds.length &&
+      !file.taskIds.length &&
+      !file.ideaIds.length,
+  ).length;
+  const selectedConnectionCount =
+    (selectedDetail?.related.projects.length ?? 0) +
+    (selectedDetail?.related.tasks.length ?? 0) +
+    (selectedDetail?.related.ideas.length ?? 0);
+  const hasActiveSearch = normalizedSearchValue.length > 0 || activeFilter !== "all";
 
   return (
     <article style={styles.layout}>
@@ -290,9 +459,9 @@ export default function FilesRoute({ snapshot }) {
             <p style={styles.eyebrow}>Files</p>
             <h2 style={{ margin: "4px 0 10px" }}>Drive-style organizer</h2>
             <p style={{ margin: 0, color: "#44515d", lineHeight: 1.6 }}>
-              Browse the seeded workspace tree, jump between root libraries, and
-              inspect how each folder or document is connected back to projects,
-              tasks, and idea backlog entries.
+              Start local, shape the workspace tree, and only then connect folders
+              or documents back to projects, tasks, and idea backlog entries inside
+              the Jakal-flow companion loop.
             </p>
             <div style={styles.breadcrumbRow}>
               <button
@@ -332,6 +501,10 @@ export default function FilesRoute({ snapshot }) {
               <p style={styles.statLabel}>Linked records</p>
               <p style={styles.statValue}>{linkedFiles}</p>
             </section>
+            <section style={styles.statCard}>
+              <p style={styles.statLabel}>Needs triage</p>
+              <p style={styles.statValue}>{unlinkedDocuments}</p>
+            </section>
           </div>
         </div>
       </section>
@@ -365,22 +538,56 @@ export default function FilesRoute({ snapshot }) {
           <section style={styles.panel}>
             <p style={styles.eyebrow}>Quick access</p>
             <h3 style={styles.sectionTitle}>Recent docs</h3>
-            <ul style={styles.buttonList}>
-              {collections.recentDocuments.map((file) => (
-                <li key={file.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveFolderId(file.parentId ?? rootIds[0] ?? null);
-                      setSelectedFileId(file.id);
-                    }}
-                    style={styles.navButton}
-                  >
-                    {file.name}
-                  </button>
+            {collections.recentDocuments.length > 0 ? (
+              <ul style={styles.buttonList}>
+                {collections.recentDocuments.map((file) => (
+                  <li key={file.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveFolderId(file.parentId ?? rootIds[0] ?? null);
+                        setSelectedFileId(file.id);
+                      }}
+                      style={styles.navButton}
+                    >
+                      {file.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={styles.empty}>
+                No documents yet. Create or import local reference material before
+                linking it into delivery work.
+              </p>
+            )}
+            <div style={styles.helperCard}>
+              <p style={{ ...styles.eyebrow, color: "rgba(248, 250, 251, 0.72)" }}>
+                Workflow guide
+              </p>
+              <h3 style={{ margin: 0 }}>Keep the repository loop visible</h3>
+              <ul style={styles.helperList}>
+                <li style={styles.helperItem}>
+                  Curate local folders first, then attach only the files that should
+                  follow the Jakal-flow execution path.
                 </li>
-              ))}
-            </ul>
+                <li style={styles.helperItem}>
+                  Use project links for scoped deliverables, task links for active
+                  execution, and idea links for pre-commit research.
+                </li>
+              </ul>
+              <div style={styles.routeLinks}>
+                <a href="#/projects" style={styles.routeLink}>
+                  Open Projects
+                </a>
+                <a href="#/tasks" style={styles.routeLink}>
+                  Open Tasks
+                </a>
+                <a href="#/ideas" style={styles.routeLink}>
+                  Open Ideas
+                </a>
+              </div>
+            </div>
           </section>
         </aside>
 
@@ -393,10 +600,40 @@ export default function FilesRoute({ snapshot }) {
             {activeFolder?.entity.summary ??
               "Choose a root library to browse folders and linked documents."}
           </p>
+          <div style={styles.controlRow}>
+            <label>
+              <span style={styles.eyebrow}>Local search</span>
+              <input
+                type="search"
+                value={searchValue}
+                onChange={(event) => setSearchValue(event.target.value)}
+                placeholder="Search files, summaries, or linked work"
+                style={styles.searchInput}
+              />
+            </label>
+            <span style={styles.tag}>
+              {filteredItems.length} of {activeItems.length} visible
+            </span>
+          </div>
+          <div style={styles.filterRow}>
+            {FILE_VIEW_FILTERS.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                onClick={() => setActiveFilter(filter.key)}
+                style={{
+                  ...styles.crumbButton,
+                  ...(activeFilter === filter.key ? styles.navButtonActive : null),
+                }}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
 
           <ul style={styles.list}>
-            {activeItems.length > 0 ? (
-              activeItems.map((node) => {
+            {filteredItems.length > 0 ? (
+              filteredItems.map((node) => {
                 const isActive = node.entity.id === selectedFileId;
                 const canOpen = node.entity.kind === "folder";
 
@@ -440,8 +677,17 @@ export default function FilesRoute({ snapshot }) {
                   </li>
                 );
               })
+            ) : activeItems.length > 0 ? (
+              <li style={styles.empty}>
+                {hasActiveSearch
+                  ? "No files match the current local search or filter. Clear the query or switch filters to widen the folder view."
+                  : "This folder has items, but nothing is visible yet."}
+              </li>
             ) : (
-              <li style={styles.empty}>This folder is empty.</li>
+              <li style={styles.empty}>
+                This folder is empty. Use it as a local staging area until a
+                document is ready to connect to a project, task, or idea.
+              </li>
             )}
           </ul>
         </section>
@@ -477,21 +723,34 @@ export default function FilesRoute({ snapshot }) {
                 <span>{selectedDetail?.entity.updatedAt.slice(0, 10) ?? "n/a"}</span>
               </li>
             </ul>
+            <div style={styles.detailSection}>
+              <h4 style={styles.detailHeading}>Jakal-flow next step</h4>
+              <p style={{ margin: 0, color: "#44515d", lineHeight: 1.6 }}>
+                {describeNextStep(selectedDetail)}
+              </p>
+            </div>
           </section>
 
           <section style={styles.card}>
             <p style={styles.eyebrow}>Connected work</p>
             <h3 style={styles.sectionTitle}>Top linked files</h3>
-            <ul style={styles.linkList}>
-              {collections.linkedWork.map((file) => (
-                <li key={file.id} style={styles.detailItem}>
-                  <span>{file.name}</span>
-                  <span>
-                    {file.projectIds.length + file.taskIds.length + file.ideaIds.length} refs
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {collections.linkedWork.length > 0 ? (
+              <ul style={styles.linkList}>
+                {collections.linkedWork.map((file) => (
+                  <li key={file.id} style={styles.detailItem}>
+                    <span>{file.name}</span>
+                    <span>
+                      {file.projectIds.length + file.taskIds.length + file.ideaIds.length} refs
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={styles.empty}>
+                No linked files yet. Keep documents local until they earn a clear
+                place in project, task, or idea tracking.
+              </p>
+            )}
             <ul style={styles.linkList}>
               <li style={styles.detailItem}>
                 <span>Projects</span>
@@ -506,6 +765,14 @@ export default function FilesRoute({ snapshot }) {
                 <span>{selectedDetail?.related.ideas.length ?? 0}</span>
               </li>
             </ul>
+            <div style={styles.detailSection}>
+              <h4 style={styles.detailHeading}>Selection status</h4>
+              <p style={{ margin: 0, color: "#44515d", lineHeight: 1.6 }}>
+                {selectedDetail
+                  ? `${selectedConnectionCount} workspace links are currently attached to this selection.`
+                  : "Select a file to inspect how it contributes to the wider workspace flow."}
+              </p>
+            </div>
           </section>
         </aside>
       </section>

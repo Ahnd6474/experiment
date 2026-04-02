@@ -245,6 +245,25 @@ def test_ideas_and_files_routes_upgrade_from_placeholder_shells():
     assert "Idea lifecycle stages are now frozen" not in ideas_source
 
 
+def test_files_route_adds_local_first_guidance_and_filter_controls():
+    files_source = read_text("desktop/src/features/files/FilesRoute.jsx")
+
+    assert_contains(
+        files_source,
+        "useDeferredValue",
+        "FILE_VIEW_FILTERS",
+        "Local search",
+        "Search files, summaries, or linked work",
+        "No files match the current local search or filter.",
+        "Workflow guide",
+        "Jakal-flow next step",
+        'href="#/projects"',
+        'href="#/tasks"',
+        'href="#/ideas"',
+        "Needs triage",
+    )
+
+
 def test_repository_runtime_persists_v3_snapshot_and_selector_safe_mutations():
     result = run_node(
         """
