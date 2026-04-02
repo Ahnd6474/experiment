@@ -47,11 +47,18 @@ def test_routes_contract_exposes_the_four_stable_shell_surfaces():
         'key: "files"',
         "export const AppShellRoutes",
         "routeFromHash",
+        "getAppShellRoute",
+        "APP_SHELL_REPOSITORY",
+        "APP_SHELL_ROUTE_KEYS",
+        "surfaceKey",
         "shortLabel",
         "shellTitle",
         "shellHint",
+        "navigationHint",
+        "repositoryFocus",
         "nextRoutes",
         "Jakal Flow",
+        "Jakal-flow repository",
     )
 
 
@@ -140,13 +147,17 @@ def test_app_shell_only_selects_route_entries_and_repository_boundary():
         'selectWorkspaceOverview',
         'selectWorkspaceSurface',
         'selectIntegrationOverview',
+        "APP_SHELL_REPOSITORY",
+        "getAppShellRoute",
         "const routeEntries = Object.freeze({",
         "repository.updateNavigation(activeRoute)",
         "<ActiveRouteEntry repository={repository} snapshot={snapshot} />",
         "Jakal Workspace Companion",
         "One desktop flow for Jakal Flow work",
+        "Connect to {APP_SHELL_REPOSITORY.label}",
+        "Open upstream repository",
         "Continue the companion loop",
-        "WorkspaceRepository",
+        "Repository connection",
     )
     assert "activeRecords.map" not in app_source
     assert "repository.writeSnapshot" not in app_source
@@ -735,10 +746,20 @@ def test_repository_migrates_legacy_snapshot_to_v3_shape():
 def test_routes_and_html_entrypoint_match_the_shell_contract():
     result = run_node(
         """
-        import { AppShellRoutes, routeFromHash } from "./desktop/src/app/routes/index.js";
+        import {
+          APP_SHELL_REPOSITORY,
+          APP_SHELL_ROUTE_KEYS,
+          AppShellRoutes,
+          getAppShellRoute,
+          routeFromHash,
+        } from "./desktop/src/app/routes/index.js";
 
         console.log(JSON.stringify({
           routeKeys: AppShellRoutes.map((route) => route.key),
+          surfaceKeys: AppShellRoutes.map((route) => route.surfaceKey),
+          routeKeyIndex: APP_SHELL_ROUTE_KEYS,
+          taskRouteFocus: getAppShellRoute("tasks")?.repositoryFocus,
+          repositoryHref: APP_SHELL_REPOSITORY.href,
           filesHash: routeFromHash("#/files"),
           fallbackHash: routeFromHash("#/missing"),
         }));
@@ -749,6 +770,10 @@ def test_routes_and_html_entrypoint_match_the_shell_contract():
 
     assert payload == {
         "routeKeys": ["projects", "tasks", "ideas", "files"],
+        "surfaceKeys": ["projects", "tasks", "ideas", "files"],
+        "routeKeyIndex": ["projects", "tasks", "ideas", "files"],
+        "taskRouteFocus": "Execution state linked back to Jakal Flow records",
+        "repositoryHref": "https://github.com/Ahnd6474/Jakal-flow",
         "filesHash": "files",
         "fallbackHash": "projects",
     }

@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useSyncExternalStore } from "react";
 import {
+  APP_SHELL_REPOSITORY,
   AppShellRoutes,
   DEFAULT_APP_ROUTE,
+  getAppShellRoute,
   routeFromHash,
 } from "./app/routes/index.js";
 import ProjectsRoute from "./features/projects/ProjectsRoute.jsx";
@@ -62,6 +64,12 @@ const shellStyles = {
     gap: "12px",
     gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
   },
+  heroActionRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "12px",
+    marginTop: "16px",
+  },
   eyebrow: {
     margin: 0,
     fontSize: "12px",
@@ -108,6 +116,30 @@ const shellStyles = {
     color: "#f8fafb",
     borderColor: "transparent",
     boxShadow: "0 14px 30px rgba(16, 32, 51, 0.18)",
+  },
+  primaryLink: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "42px",
+    padding: "0 16px",
+    borderRadius: "999px",
+    backgroundColor: "#f7fafc",
+    color: "#102033",
+    textDecoration: "none",
+    fontWeight: 700,
+  },
+  secondaryLink: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "42px",
+    padding: "0 16px",
+    borderRadius: "999px",
+    border: "1px solid rgba(247, 250, 252, 0.32)",
+    color: "#f7fafc",
+    textDecoration: "none",
+    fontWeight: 600,
   },
   label: {
     fontSize: "18px",
@@ -220,6 +252,18 @@ const shellStyles = {
     backgroundColor: "#ffffff",
     border: "1px solid rgba(93, 107, 121, 0.14)",
   },
+  routeButtonLabel: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+  },
+  strongCaption: {
+    margin: 0,
+    fontSize: "13px",
+    color: "#44515d",
+    lineHeight: 1.5,
+  },
 };
 
 function useWorkspaceSnapshot(repository) {
@@ -284,11 +328,10 @@ function summarizeSurfaceStructure(surface) {
 }
 
 function resolveNextRoutes(activeRoute) {
-  const currentRoute =
-    AppShellRoutes.find((route) => route.key === activeRoute) ?? AppShellRoutes[0];
+  const currentRoute = getAppShellRoute(activeRoute) ?? AppShellRoutes[0];
 
   return currentRoute.nextRoutes
-    .map((routeKey) => AppShellRoutes.find((route) => route.key === routeKey))
+    .map((routeKey) => getAppShellRoute(routeKey))
     .filter(Boolean);
 }
 
@@ -299,8 +342,7 @@ export default function App({ repository }) {
   const workspaceOverview = selectWorkspaceOverview(snapshot);
   const integrationOverview = selectIntegrationOverview(snapshot);
   const activeSurface = selectWorkspaceSurface(snapshot, activeRoute);
-  const activeSurfaceRoute =
-    AppShellRoutes.find((route) => route.key === activeRoute) ?? AppShellRoutes[0];
+  const activeSurfaceRoute = getAppShellRoute(activeRoute) ?? AppShellRoutes[0];
   const relatedRoutes = resolveNextRoutes(activeRoute);
   const ActiveRouteEntry = routeEntries[activeRoute] ?? routeEntries[DEFAULT_APP_ROUTE];
   const activeCount = collections[activeRoute]?.length ?? 0;
@@ -343,6 +385,19 @@ export default function App({ repository }) {
                 top-level workspace shell so the desktop companion feels like one
                 product instead of four isolated routes.
               </p>
+              <div style={shellStyles.heroActionRow}>
+                <a href={activeSurfaceRoute.path} style={shellStyles.primaryLink}>
+                  Open {activeSurfaceRoute.label}
+                </a>
+                <a
+                  href={APP_SHELL_REPOSITORY.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={shellStyles.secondaryLink}
+                >
+                  Connect to {APP_SHELL_REPOSITORY.label}
+                </a>
+              </div>
               <div style={shellStyles.statRow}>
                 <span style={{ ...shellStyles.pill, ...shellStyles.heroPill }}>
                   last route {workspaceOverview.lastRoute}
@@ -406,6 +461,7 @@ export default function App({ repository }) {
                   <span style={shellStyles.caption}>{route.shortLabel}</span>
                 </div>
                 <p style={shellStyles.caption}>{route.description}</p>
+                <p style={shellStyles.strongCaption}>{route.navigationHint}</p>
                 <div style={shellStyles.statRow}>
                   <span style={shellStyles.pill}>
                     {overviewEntry?.itemCount ?? 0} items
@@ -449,7 +505,10 @@ export default function App({ repository }) {
                   {relatedRoutes.map((route) => (
                     <li key={route.key}>
                       <a href={route.path} style={shellStyles.routeButton}>
-                        <strong>{route.label}</strong>
+                        <div style={shellStyles.routeButtonLabel}>
+                          <strong>{route.label}</strong>
+                          <span style={shellStyles.pill}>{route.repositoryFocus}</span>
+                        </div>
                         <p style={{ ...shellStyles.caption, margin: "6px 0 0" }}>
                           {route.shortLabel}
                         </p>
@@ -464,18 +523,34 @@ export default function App({ repository }) {
           </div>
 
           <aside style={shellStyles.statsCard}>
-            <p style={shellStyles.eyebrow}>Repository boundary</p>
-            <h2 style={{ marginTop: 0 }}>WorkspaceRepository</h2>
+            <p style={shellStyles.eyebrow}>Repository connection</p>
+            <h2 style={{ marginTop: 0 }}>{APP_SHELL_REPOSITORY.label}</h2>
             <p style={shellStyles.summaryBody}>
-              AppShell owns navigation, route framing, and cross-surface
-              workspace context. Feature routes render the detailed experiences
-              while shared writes stay inside the same repository boundary.
+              {APP_SHELL_REPOSITORY.description} AppShell owns navigation, route
+              framing, and cross-surface workspace context while feature routes
+              render the detailed experiences against the same repository
+              boundary.
             </p>
+            <a
+              href={APP_SHELL_REPOSITORY.href}
+              target="_blank"
+              rel="noreferrer"
+              style={shellStyles.routeButton}
+            >
+              <strong>Open upstream repository</strong>
+              <p style={{ ...shellStyles.caption, margin: "6px 0 0" }}>
+                {APP_SHELL_REPOSITORY.shortHref}
+              </p>
+            </a>
 
             <ul style={shellStyles.list}>
               <li style={shellStyles.listItem}>
                 <p style={shellStyles.listLabel}>Active route</p>
                 <p style={shellStyles.listValue}>{activeRoute}</p>
+              </li>
+              <li style={shellStyles.listItem}>
+                <p style={shellStyles.listLabel}>Active surface focus</p>
+                <p style={shellStyles.listValue}>{activeSurfaceRoute.repositoryFocus}</p>
               </li>
               <li style={shellStyles.listItem}>
                 <p style={shellStyles.listLabel}>Connected providers</p>
