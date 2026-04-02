@@ -1,36 +1,80 @@
 # Jakal Workspace Desktop
 
-Local-first workspace companion shell for a future desktop app that combines:
+Jakal Workspace Desktop is a local-first companion shell for organizing work around the upstream [`Jakal-flow`](https://github.com/Ahnd6474/Jakal-flow) project. It keeps four workspace surfaces inside one React shell:
 
-- a GitHub-like project hub
-- a task board for active work
-- an idea board for incubation and later projects
-- a Drive-like file organizer
+- `projects`: repository-facing delivery hub
+- `tasks`: active execution board
+- `ideas`: incubation board for future work
+- `files`: Drive-style library for briefs, specs, and support material
 
-## Current Status
+The current app is intentionally a verified shell and seeded workspace experience, not a full production desktop product.
 
-This repository now implements a verified shell-level companion experience for the four requested surfaces, but it is still not a full production workspace app.
+## What The App Does Now
 
-Implemented and verified:
+Implemented and verified in this repository:
 
-- a React shell with four stable top-level routes: `projects`, `tasks`, `ideas`, and `files`
-- a shared `WorkspaceSnapshot` contract and `WorkspaceRepository` write boundary
+- a shared shell with four stable top-level routes: `projects`, `tasks`, `ideas`, and `files`
+- hash-based route selection with fallback to `projects`
+- shell-level route framing, navigation hints, and cross-surface continuation links
+- a dedicated repository connection panel and direct upstream link to `Jakal-flow`
 - seeded local-first persistence through browser `localStorage`
-- a minimal Tauri Rust entrypoint file at `src-tauri/src/main.rs`
-- PowerShell harness helpers for prerequisite checks, upstream bootstrap, sample target materialization, and phase-based verification entrypoints
+- one shared `WorkspaceSnapshot` contract with `WorkspaceRepository` as the only write boundary
+- upgraded route experiences for idea shaping and file browsing
+- a minimal Tauri Rust entrypoint at `src-tauri/src/main.rs`
+- PowerShell harness helpers for prerequisite checks, upstream bootstrap, sample target materialization, and verification entrypoints
 
-Still intentionally out of scope here:
+Still intentionally out of scope:
 
-- project CRUD and relation-aware detail views
-- task board interactions such as move, reorder, archive, and project-linked metadata editing
-- idea lifecycle workflows or idea-to-project conversion
-- hierarchical file organization actions
-- a runnable Tauri desktop package configuration (`src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json` are absent)
+- full CRUD and relation-editing flows across all workspace entities
+- task board interactions such as move, reorder, archive, or deeper scheduling controls
+- idea promotion workflows that mutate real downstream project state
+- file import, upload, and filesystem sync
+- a runnable packaged Tauri desktop configuration (`src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json` are absent)
+
+## Intended Usage Model
+
+This repo is designed as a companion workspace around the upstream `Jakal-flow` repository, not a replacement for it.
+
+- Use `projects` to anchor repository-facing delivery context and sync health.
+- Use `tasks` to keep active execution visible against that repository context.
+- Use `ideas` to shape future work before it becomes committed delivery.
+- Use `files` to stage local documents first, then connect only the material that should stay attached to projects, tasks, or ideas.
+
+The shell is built to make those four surfaces feel like one workflow loop rather than isolated pages. Route metadata, continuation links, and repository focus labels are there to guide movement between planning, execution, incubation, and supporting material.
+
+## Surface Guide
+
+### Shared Shell
+
+The shell hero summarizes workspace totals, last active route, and connected provider count. Navigation cards describe each surface, and the right-hand repository panel keeps the `Jakal-flow` relationship explicit while the active route renders inside the same shared frame.
+
+### Ideas
+
+The `ideas` route is an incubation board with:
+
+- searchable stage-based lanes
+- workflow guidance for `captured`, `shaping`, `validated`, and `promoted`
+- selected-idea detail panels
+- readiness checks for linked projects, tasks, files, and promotion outcome
+- continuity counts that show whether discovery is ready to graduate into repository-backed work
+
+### Files
+
+The `files` route is a local-first workspace browser with:
+
+- root-library navigation
+- folder breadcrumbs
+- deferred local search and lightweight filtering
+- recent document and top-linked-file callouts
+- selection detail panels that explain the next recommended handoff into `projects`, `tasks`, or `ideas`
 
 ## Repository Layout
 
 - `desktop/`: React + Vite shell
-- `desktop/src/app/routes/index.js`: frozen route contract
+- `desktop/src/App.jsx`: shared shell framing and repository connection panel
+- `desktop/src/app/routes/index.js`: frozen route contract and upstream repository metadata
+- `desktop/src/features/ideas/IdeasRoute.jsx`: incubation board experience
+- `desktop/src/features/files/FilesRoute.jsx`: local-first file library experience
 - `desktop/src/shared/contracts/index.js`: snapshot shape and seed data
 - `desktop/src/shared/storage/workspaceRepository.js`: persistence boundary and migration hook
 - `scripts/`: PowerShell harness entrypoints and shared helpers
@@ -53,7 +97,7 @@ cd desktop
 npm install
 ```
 
-Optional harness prerequisites for the PowerShell scripts:
+Optional harness prerequisites:
 
 - PowerShell 5.1+ on Windows
 - `git`
@@ -97,30 +141,30 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/invoke-verification.
 
 - `python -m pytest` passes from the repository root
 - `npm run build` passes from `desktop/`
+- `desktop/index.html` mounts the browser shell
+- route selection is hash-based and falls back to `projects`
+- all writes flow through `WorkspaceRepository`
 - `scripts/materialize-target.ps1 -ProfileId sample-local` resolves to the tracked sample materializer
 - `scripts/invoke-verification.ps1` exists as the fixed harness verification entrypoint described by `docs/ARCHITECTURE.md`
-- the browser shell mounts through `desktop/index.html`
-- route selection is hash-based and falls back to `projects`
-- all writes go through `WorkspaceRepository`
 
 ## Architecture Notes
 
-The current codebase is intentionally narrow. The four surface areas share one seeded snapshot object:
+The four workspace surfaces share one seeded snapshot object:
 
 - `projects`
 - `tasks`
 - `ideas`
 - `files`
 
-Cross-surface references are stored by id through `links`, and UI state records the last active route in `navigation.lastRoute`.
+Cross-surface relationships are stored by id through `links`, and UI state records the last active route in `navigation.lastRoute`.
 
-`WorkspaceRepository` is the only shared write boundary. It reads from storage, applies optional migrations, updates timestamps, and persists the full snapshot.
+`WorkspaceRepository` remains the only shared write boundary. It reads from storage, applies optional migrations, updates timestamps, and persists the full snapshot.
 
 For harness-oriented work, `config/experiment.example.json` and `scripts/profile-common.ps1` define the fixed config keys, resolved paths, entry script names, and profile normalization rules.
 
 ## Limitations
 
-- The app is currently a shell and seed-data viewer, not a full productivity workspace.
+- The app is still a shell-plus-seeded-data experience, not a complete productivity workspace.
 - Persistence targets browser `localStorage`; there is no filesystem sync or multi-user support.
 - The Tauri side is incomplete, so this repository is not yet a packaged desktop application.
 - The managed verification flow for `jakal-flow-local` still depends on external tools and a mutable target checkout under `.local/`.
@@ -129,5 +173,5 @@ For harness-oriented work, `config/experiment.example.json` and `scripts/profile
 
 - Replace seeded collections with real feature state and CRUD flows per surface.
 - Add Tauri configuration and desktop packaging only after the React shell contract is stable enough to preserve.
-- Expand tests from shell-level contracts into feature behavior once those features actually exist.
+- Expand tests from shell-level contracts into richer feature behavior once those behaviors are meant to be stable.
 - If the harness is kept, add direct automated coverage for `scripts/invoke-verification.ps1`.
