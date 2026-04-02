@@ -125,3 +125,14 @@ def test_architecture_doc_describes_local_contract():
     assert "config/experiment.example.json" in architecture_text
     assert "scripts/profile-common.ps1" in architecture_text
     assert "jakal-flow-local" in architecture_text
+
+
+def test_fixed_entrypoint_scripts_exist():
+    for relative_path in (
+        "scripts/check-prereqs.ps1",
+        "scripts/bootstrap.ps1",
+        "scripts/clean-local-state.ps1",
+        "scripts/materialize-target.ps1",
+        "scripts/invoke-verification.ps1",
+    ):
+        assert (REPO_ROOT / relative_path).exists(), relative_path

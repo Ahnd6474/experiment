@@ -7,7 +7,7 @@ import {
 /**
  * AppShell owns only route selection, shell chrome, and shared repository wiring.
  * Each surface module owns its own UI state, selectors, and repository mutations.
- * Shared data lives in WorkspaceSnapshot v2, and surfaces may coordinate only
+ * Shared data lives in WorkspaceSnapshot v3, and surfaces may coordinate only
  * through frozen entity contracts and id-based cross-links, never by embedding
  * foreign records or writing around WorkspaceRepository.
  */

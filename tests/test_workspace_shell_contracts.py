@@ -164,7 +164,7 @@ def test_surface_route_entry_modules_exist_with_frozen_contract_docstring():
         assert_contains(
             source,
             "AppShell owns only route selection, shell chrome, and shared repository wiring.",
-            "Shared data lives in WorkspaceSnapshot v2",
+            "Shared data lives in WorkspaceSnapshot v3",
             "export default function",
         )
 

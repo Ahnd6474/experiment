@@ -15,6 +15,9 @@ def test_example_config_points_to_profile_directory_and_default_jakal_flow_profi
     assert config["runtime"]["defaultProfile"] == "jakal-flow-local"
     assert config["entryScripts"]["bootstrap"] == "scripts/bootstrap.ps1"
     assert config["entryScripts"]["materializeTarget"] == "scripts/materialize-target.ps1"
+    assert config["entryScripts"]["invokeVerification"] == "scripts/invoke-verification.ps1"
+    assert (REPO_ROOT / config["entryScripts"]["materializeTarget"]).exists()
+    assert (REPO_ROOT / config["entryScripts"]["invokeVerification"]).exists()
 
 
 def test_jakal_flow_profile_freezes_remote_target_contract():
