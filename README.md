@@ -15,8 +15,8 @@ Implemented and verified in this repository:
 
 - a shared shell with four stable top-level routes: `projects`, `tasks`, `ideas`, and `files`
 - hash-based route selection with fallback to `projects`
-- shell-level route framing, navigation hints, and cross-surface continuation links
-- a dedicated repository connection panel and direct upstream link to `Jakal-flow`
+- shell-level route framing, navigation hints, hero metrics, and cross-surface continuation links
+- a dedicated repository connection panel, repository-focus labels, and direct upstream link to `Jakal-flow`
 - seeded local-first persistence through browser `localStorage`
 - one shared `WorkspaceSnapshot` contract with `WorkspaceRepository` as the only write boundary
 - upgraded route experiences for idea shaping and file browsing
@@ -46,12 +46,13 @@ The shell is built to make those four surfaces feel like one workflow loop rathe
 
 ### Shared Shell
 
-The shell hero summarizes workspace totals, last active route, and connected provider count. Navigation cards describe each surface, and the right-hand repository panel keeps the `Jakal-flow` relationship explicit while the active route renders inside the same shared frame.
+The shell hero summarizes workspace totals, the last active route, and connected provider count while exposing direct actions for the current surface and the upstream repository. Navigation cards describe each surface with route-specific hints, and the right-hand repository panel keeps the `Jakal-flow` relationship explicit while the active route renders inside the same shared frame.
 
 ### Ideas
 
 The `ideas` route is an incubation board with:
 
+- deferred search and stage filters across the full board
 - searchable stage-based lanes
 - workflow guidance for `captured`, `shaping`, `validated`, and `promoted`
 - selected-idea detail panels
@@ -66,6 +67,7 @@ The `files` route is a local-first workspace browser with:
 - folder breadcrumbs
 - deferred local search and lightweight filtering
 - recent document and top-linked-file callouts
+- workflow guidance that explains when a file should stay local versus move into repository-backed work
 - selection detail panels that explain the next recommended handoff into `projects`, `tasks`, or `ideas`
 
 ## Repository Layout
