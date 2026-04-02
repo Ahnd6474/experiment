@@ -47,6 +47,11 @@ def test_routes_contract_exposes_the_four_stable_shell_surfaces():
         'key: "files"',
         "export const AppShellRoutes",
         "routeFromHash",
+        "shortLabel",
+        "shellTitle",
+        "shellHint",
+        "nextRoutes",
+        "Jakal Flow",
     )
 
 
@@ -132,9 +137,16 @@ def test_app_shell_only_selects_route_entries_and_repository_boundary():
         'import TasksRoute from "./features/tasks/TasksRoute.jsx";',
         'import IdeasRoute from "./features/ideas/IdeasRoute.jsx";',
         'import FilesRoute from "./features/files/FilesRoute.jsx";',
+        'selectWorkspaceOverview',
+        'selectWorkspaceSurface',
+        'selectIntegrationOverview',
         "const routeEntries = Object.freeze({",
         "repository.updateNavigation(activeRoute)",
         "<ActiveRouteEntry repository={repository} snapshot={snapshot} />",
+        "Jakal Workspace Companion",
+        "One desktop flow for Jakal Flow work",
+        "Continue the companion loop",
+        "WorkspaceRepository",
     )
     assert "activeRecords.map" not in app_source
     assert "repository.writeSnapshot" not in app_source
